@@ -25,6 +25,9 @@ targets:
         CFBundleVersion: "1"
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # 讓 App 的 Documents/ 在 Files App 內可見（Simulator 開發專用）
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"
