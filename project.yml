@@ -1,0 +1,35 @@
+name: QuantMonitor
+options:
+  bundleIdPrefix: com.chuchun
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: zh-Hant
+
+targets:
+  QuantMonitor:
+    type: application
+    platform: iOS
+    sources:
+      - path: QuantMonitor
+    info:
+      path: QuantMonitor/Info.plist
+      properties:
+        CFBundleDisplayName: 量化監控
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: false
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"
+        ENABLE_PREVIEWS: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: com.chuchun.QuantMonitor
+        CODE_SIGN_STYLE: Automatic
+        # 暫不設 ASSETCATALOG_*，待用戶在 Xcode 內加 Asset Catalog 後再啟用
