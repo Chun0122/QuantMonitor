@@ -81,11 +81,16 @@ struct StatusView: View {
                 .font(.title2)
                 .bold()
 
-            Text(stateDescription)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            ScrollView {
+                Text(stateDescription)
+                    .font(.callout)
+                    .foregroundStyle(isError ? .red : .secondary)
+                    .multilineTextAlignment(.leading)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+            }
+            .frame(maxHeight: 240)
 
             Spacer()
 
@@ -109,6 +114,11 @@ struct StatusView: View {
             Spacer()
         }
         .padding()
+    }
+
+    private var isError: Bool {
+        if case .error = loader.state { return true }
+        return false
     }
 
     private var stateIcon: String {
