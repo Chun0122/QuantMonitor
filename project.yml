@@ -35,4 +35,5 @@ targets:
         ENABLE_PREVIEWS: "YES"
         PRODUCT_BUNDLE_IDENTIFIER: com.chuchun.QuantMonitor
         CODE_SIGN_STYLE: Automatic
-        # 暫不設 ASSETCATALOG_*，待用戶在 Xcode 內加 Asset Catalog 後再啟用
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
