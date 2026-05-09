@@ -9,11 +9,28 @@ struct DashboardSnapshot: Codable, Equatable {
     let regime: RegimeBlock
     let discover: DiscoverBlock
     let rotation: RotationBlock?
+    // v2 新增（多組 active 輪動陣列；舊版日報無此鍵時為 nil）
+    let rotations: [RotationBlock]?
     let watchEntries: [WatchEntryItem]
     let signals: [SignalItem]
     let strategyEvents: [StrategyEventItem]
     let aiSummary: String?
+    // v1.1 新增（向下相容；舊版日報無此鍵時為 nil）
+    let portfolioReview: PortfolioReview?
+    let positionTimeseries: PositionTimeseries?
     let errors: [String]
+
+    /// v2 統一存取點：優先用 rotations 陣列，舊 JSON 退回 [rotation]。
+    /// 永遠回傳 array（可能為空）。
+    var allRotations: [RotationBlock] {
+        if let rs = rotations, !rs.isEmpty {
+            return rs
+        }
+        if let r = rotation {
+            return [r]
+        }
+        return []
+    }
 }
 
 // MARK: - Regime
@@ -234,6 +251,50 @@ struct StrategyEventItem: Codable, Equatable, Hashable, Identifiable {
         default: return "doc.text"
         }
     }
+}
+
+// MARK: - Portfolio Review (v1.1)
+
+struct PortfolioReview: Codable, Equatable {
+    let todayPnlPct: Double?
+    let wtdReturnPct: Double?
+    let mtdReturnPct: Double?
+    let totalReturnPct: Double?
+    let sharpeRatio: Double?
+    let maxDrawdownPct: Double?
+    let winRatePct: Double?
+    let snapshotsCount: Int
+    let equityCurve: [EquityPoint]?
+}
+
+struct EquityPoint: Codable, Equatable, Identifiable {
+    let date: String
+    let capital: Double
+    var id: String { date }
+}
+
+// MARK: - Position Timeseries (v1.1)
+
+struct PositionTimeseries: Codable, Equatable {
+    let tradingDays: [String]
+    let series: [String: PositionSeries]
+
+    /// 取出某檔股票的對齊（日期, 收盤）序列；找不到時為 nil。
+    func points(for stockId: String) -> [(date: String, close: Double)]? {
+        guard let s = series[stockId], !s.close.isEmpty else { return nil }
+        let dates = Array(tradingDays.dropFirst(s.firstIdx))
+        guard dates.count == s.close.count else {
+            // first_idx 與長度不一致時取較短者
+            let n = min(dates.count, s.close.count)
+            return zip(dates.prefix(n), s.close.prefix(n)).map { ($0, $1) }
+        }
+        return zip(dates, s.close).map { ($0, $1) }
+    }
+}
+
+struct PositionSeries: Codable, Equatable {
+    let close: [Double]
+    let firstIdx: Int
 }
 
 // MARK: - AnyCodable (for `details` heterogeneous values)

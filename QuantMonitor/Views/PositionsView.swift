@@ -3,13 +3,45 @@ import SwiftUI
 struct PositionsView: View {
     let snapshot: DashboardSnapshot
 
+    @State private var selectedRotationName: String?
+
+    private var rotations: [RotationBlock] { snapshot.allRotations }
+
+    private var selectedRotation: RotationBlock? {
+        guard !rotations.isEmpty else { return nil }
+        if let name = selectedRotationName,
+           let match = rotations.first(where: { $0.name == name }) {
+            return match
+        }
+        return rotations.first
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                if let rotation = snapshot.rotation {
+                if rotations.count > 1 {
+                    Section {
+                        Picker("組合", selection: Binding(
+                            get: { selectedRotation?.name ?? rotations.first!.name },
+                            set: { selectedRotationName = $0 }
+                        )) {
+                            ForEach(rotations, id: \.name) { rot in
+                                Text(rot.name).tag(rot.name)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+                }
+
+                if let rotation = selectedRotation {
                     Section {
                         ForEach(rotation.holdings) { holding in
-                            RotationHoldingRow(holding: holding)
+                            RotationHoldingRow(
+                                holding: holding,
+                                sparkline: sparklineValues(for: holding.stockId)
+                            )
                         }
                     } header: {
                         HStack {
@@ -26,12 +58,15 @@ struct PositionsView: View {
                 if !snapshot.watchEntries.isEmpty {
                     Section("監控持倉（\(snapshot.watchEntries.count)）") {
                         ForEach(snapshot.watchEntries) { entry in
-                            WatchEntryRow(entry: entry)
+                            WatchEntryRow(
+                                entry: entry,
+                                sparkline: sparklineValues(for: entry.stockId)
+                            )
                         }
                     }
                 }
 
-                if snapshot.rotation == nil && snapshot.watchEntries.isEmpty {
+                if rotations.isEmpty && snapshot.watchEntries.isEmpty {
                     ContentUnavailableView(
                         "尚無持倉",
                         systemImage: "tray",
@@ -41,6 +76,13 @@ struct PositionsView: View {
             }
             .navigationTitle("持倉")
         }
+    }
+
+    private func sparklineValues(for stockId: String) -> [Double] {
+        guard let ts = snapshot.positionTimeseries,
+              let series = ts.series[stockId]
+        else { return [] }
+        return series.close
     }
 
     private func formatPct(_ v: Double, signed: Bool = false) -> String {
@@ -57,6 +99,7 @@ struct PositionsView: View {
 
 struct RotationHoldingRow: View {
     let holding: RotationHolding
+    var sparkline: [Double] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -84,6 +127,10 @@ struct RotationHoldingRow: View {
                 if let pnl = holding.unrealizedPnl {
                     priceChip(label: "未實現", value: pnl, color: pnl >= 0 ? .green : .red)
                 }
+                Spacer()
+                if !sparkline.isEmpty {
+                    SparklineView(values: sparkline)
+                }
             }
             .font(.caption)
         }
@@ -109,6 +156,7 @@ struct RotationHoldingRow: View {
 
 struct WatchEntryRow: View {
     let entry: WatchEntryItem
+    var sparkline: [Double] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -128,6 +176,10 @@ struct WatchEntryRow: View {
                 }
                 if let qty = entry.quantity {
                     Text("\(qty) 股").foregroundStyle(.secondary)
+                }
+                Spacer()
+                if !sparkline.isEmpty {
+                    SparklineView(values: sparkline)
                 }
             }
             .font(.caption)
