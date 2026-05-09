@@ -14,6 +14,9 @@ struct TodayView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     headerCard
+                    if let review = snapshot.portfolioReview {
+                        PerformanceCard(review: review)
+                    }
                     if !snapshot.signals.isEmpty {
                         signalsSection
                     }

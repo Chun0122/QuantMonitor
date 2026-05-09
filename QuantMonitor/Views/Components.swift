@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 // MARK: - Regime Badge
@@ -174,5 +175,132 @@ struct ScoreBar: View {
         if v >= 0.7 { return .green }
         if v >= 0.4 { return .blue }
         return .gray
+    }
+}
+
+// MARK: - Sparkline (持倉/Watch 列尾迷你走勢圖)
+
+struct SparklineView: View {
+    let values: [Double]
+    var height: CGFloat = 28
+    var width: CGFloat = 80
+
+    var body: some View {
+        Group {
+            if values.count < 2 {
+                Text("—")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(width: width, height: height, alignment: .trailing)
+            } else {
+                Chart {
+                    ForEach(Array(values.enumerated()), id: \.offset) { idx, v in
+                        LineMark(
+                            x: .value("idx", idx),
+                            y: .value("close", v)
+                        )
+                        .foregroundStyle(lineColor)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        .interpolationMethod(.linear)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartPlotStyle { plot in
+                    plot.background(Color.clear)
+                }
+                .frame(width: width, height: height)
+            }
+        }
+    }
+
+    private var lineColor: Color {
+        guard let first = values.first, let last = values.last, first != 0 else { return .gray }
+        return last >= first ? .green : .red
+    }
+}
+
+// MARK: - Performance Card (Today 分頁績效摘要)
+
+struct PerformanceCard: View {
+    let review: PortfolioReview
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("績效摘要", systemImage: "chart.line.uptrend.xyaxis")
+                    .font(.headline)
+                Spacer()
+                if review.snapshotsCount > 0 {
+                    Text("\(review.snapshotsCount) 日")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // 第一列：今日 / 本週 / 本月 / 累計
+            HStack(spacing: 14) {
+                metricCell(label: "今日", pct: review.todayPnlPct)
+                metricCell(label: "本週", pct: review.wtdReturnPct)
+                metricCell(label: "本月", pct: review.mtdReturnPct)
+                metricCell(label: "累計", pct: review.totalReturnPct)
+            }
+
+            Divider()
+
+            // 第二列：Sharpe / MDD / 勝率
+            HStack(spacing: 14) {
+                ratioCell(label: "Sharpe", value: review.sharpeRatio, format: "%.2f")
+                ratioCell(label: "最大回撤", value: review.maxDrawdownPct.map { -$0 }, format: "%.1f%%", colorize: false, mutedNegative: true)
+                ratioCell(label: "勝率", value: review.winRatePct, format: "%.0f%%", colorize: false)
+            }
+        }
+        .padding()
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func metricCell(label: String, pct: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            if let p = pct {
+                Text(String(format: "%+.2f%%", p * 100))
+                    .font(.subheadline).bold()
+                    .foregroundStyle(p >= 0 ? .green : .red)
+            } else {
+                Text("—")
+                    .font(.subheadline).bold()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func ratioCell(
+        label: String,
+        value: Double?,
+        format: String,
+        colorize: Bool = true,
+        mutedNegative: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            if let v = value {
+                Text(String(format: format, v))
+                    .font(.subheadline).bold()
+                    .foregroundStyle(color(for: v, colorize: colorize, mutedNegative: mutedNegative))
+            } else {
+                Text("—")
+                    .font(.subheadline).bold()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func color(for v: Double, colorize: Bool, mutedNegative: Bool) -> Color {
+        if mutedNegative { return .orange }
+        if !colorize { return .primary }
+        return v >= 0 ? .green : .red
     }
 }
