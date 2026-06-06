@@ -220,6 +220,131 @@ struct SparklineView: View {
     }
 }
 
+// MARK: - Rotation Action Summary (今日 Rotation 操作)
+
+/// 單一輪動組合的「今日做了什麼」摘要卡片。
+struct RotationActionSummaryCard: View {
+    let rotation: RotationBlock
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(rotation.name)
+                    .font(.subheadline).bold()
+                Text(modeLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(rotation.holdings.count)/\(rotation.maxPositions) 持倉")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            let actions = rotation.actions
+            if actions.isEmpty {
+                Text("— 今日無異動 —")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+            } else {
+                ForEach(actions) { action in
+                    RotationActionRow(action: action)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var modeLabel: String {
+        switch rotation.mode {
+        case "momentum": return "動能"
+        case "swing": return "波段"
+        case "value": return "價值"
+        case "dividend": return "高息"
+        case "growth": return "成長"
+        case "all": return "綜合"
+        default: return rotation.mode
+        }
+    }
+}
+
+/// 單筆操作列（買入 / 賣出 / 續持 / 保持）。
+struct RotationActionRow: View {
+    let action: RotationAction
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(action.symbol)
+                .font(.subheadline)
+                .frame(width: 22, alignment: .leading)
+
+            Text(action.actionLabel)
+                .font(.subheadline)
+                .foregroundStyle(labelColor)
+                .frame(width: 64, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(action.stockId).font(.subheadline).bold()
+                    if let name = action.stockName, !name.isEmpty {
+                        Text(name).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if action.isSwitch {
+                        Text("換股")
+                            .font(.caption2)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.orange.opacity(0.18))
+                            .foregroundStyle(.orange)
+                            .clipShape(Capsule())
+                    }
+                }
+                if let detail = detailText {
+                    Text(detail).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if let ret = action.returnPct {
+                Text(String(format: "%+.1f%%", ret))
+                    .font(.caption).bold()
+                    .foregroundStyle(ret >= 0 ? .green : .red)
+            } else if let rank = action.entryRank, action.kind == .open {
+                Text("#\(rank)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var labelColor: Color {
+        if action.isRisk { return .orange }
+        switch action.kind {
+        case .open: return .green
+        case .close: return .red
+        case .renew: return .blue
+        default: return .secondary
+        }
+    }
+
+    private var detailText: String? {
+        var parts: [String] = []
+        if let reason = action.reasonLabel, action.kind == .close {
+            parts.append(reason)
+        }
+        if let price = action.price {
+            parts.append(String(format: "@%.2f", price))
+        }
+        if let rank = action.entryRank, action.kind == .open {
+            parts.append("排名 #\(rank)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
 // MARK: - Performance Card (Today 分頁績效摘要)
 
 struct PerformanceCard: View {
