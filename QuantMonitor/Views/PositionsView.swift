@@ -36,11 +36,20 @@ struct PositionsView: View {
                 }
 
                 if let rotation = selectedRotation {
+                    if !rotation.actions.isEmpty {
+                        Section("今日操作（\(rotation.actions.count)）") {
+                            ForEach(rotation.actions) { action in
+                                RotationActionRow(action: action)
+                            }
+                        }
+                    }
+
                     Section {
                         ForEach(rotation.holdings) { holding in
                             RotationHoldingRow(
                                 holding: holding,
-                                sparkline: sparklineValues(for: holding.stockId)
+                                sparkline: sparklineValues(for: holding.stockId),
+                                isNewToday: holding.entryDate == snapshot.date
                             )
                         }
                     } header: {
@@ -100,6 +109,7 @@ struct PositionsView: View {
 struct RotationHoldingRow: View {
     let holding: RotationHolding
     var sparkline: [Double] = []
+    var isNewToday: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -109,6 +119,15 @@ struct RotationHoldingRow: View {
                 Text(holding.stockName ?? "—")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if isNewToday {
+                    Text("今日新進")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color.green.opacity(0.18))
+                        .foregroundStyle(.green)
+                        .clipShape(Capsule())
+                }
                 Spacer()
                 if let pct = holding.unrealizedPct {
                     Text(String(format: "%+.2f%%", pct * 100))

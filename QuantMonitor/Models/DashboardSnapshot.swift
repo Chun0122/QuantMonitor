@@ -148,6 +148,82 @@ struct RotationBlock: Codable, Equatable {
     let status: String
     let updatedAt: String?
     let holdings: [RotationHolding]
+    // v4：今日操作（open/close/renew/hold）；舊版 JSON 無此欄位 → nil
+    let todayActions: [RotationAction]?
+
+    /// 今日操作（永遠回傳陣列，方便 View 使用）。
+    var actions: [RotationAction] { todayActions ?? [] }
+
+    /// 是否有「實質」異動（買/賣/續持，排除單純 hold）。
+    var hasMovement: Bool { actions.contains { $0.kind != .hold } }
+}
+
+/// 單筆今日操作。對映後端 `rotation_action_log`。
+struct RotationAction: Codable, Equatable, Identifiable {
+    let actionType: String          // open / close / renew / hold
+    let reason: String?
+    let isRiskExit: Bool?
+    let switchGroup: String?
+    let stockId: String
+    let stockName: String?
+    let shares: Int?
+    let price: Double?
+    let entryRank: Int?
+    let pnl: Double?
+    let returnPct: Double?
+
+    var id: String { "\(actionType)-\(stockId)" }
+
+    enum Kind: String {
+        case open, close, renew, hold, unknown
+    }
+
+    var kind: Kind { Kind(rawValue: actionType) ?? .unknown }
+
+    /// 風控出場（停損 / 危機 / 回撤熔斷）。
+    var isRisk: Bool { isRiskExit ?? false }
+
+    /// 是否為換股動作（同日 sell+buy 配對）。
+    var isSwitch: Bool { switchGroup != nil }
+
+    /// UI 圖示（SF Symbol 名稱或 emoji）。
+    var symbol: String {
+        if isRisk { return "⚠️" }
+        if isSwitch { return "🔁" }
+        switch kind {
+        case .open: return "🟢"
+        case .close: return "🔴"
+        case .renew: return "♻️"
+        case .hold: return "⚪"
+        case .unknown: return "•"
+        }
+    }
+
+    /// UI 中文標籤。
+    var actionLabel: String {
+        switch kind {
+        case .open: return "買入"
+        case .close: return isRisk ? "風控賣出" : "賣出"
+        case .renew: return "續持"
+        case .hold: return "保持"
+        case .unknown: return actionType
+        }
+    }
+
+    /// 賣出原因的人話。
+    var reasonLabel: String? {
+        guard let reason else { return nil }
+        switch reason {
+        case "holding_expired": return "持有到期"
+        case "stop_loss": return "停損"
+        case "crisis_exit": return "危機出場"
+        case "max_drawdown_liquidation": return "回撤熔斷"
+        case "rank_dropped": return "排名跌出"
+        case "gate_b_score_gap": return "分差不足(閘門B)"
+        case "gate_c_weekly_cap": return "週換手上限(閘門C)"
+        default: return reason
+        }
+    }
 }
 
 struct RotationHolding: Codable, Equatable, Identifiable {

@@ -17,6 +17,7 @@ struct TodayView: View {
                     if let review = snapshot.portfolioReview {
                         PerformanceCard(review: review)
                     }
+                    todayActionsSection
                     if !snapshot.signals.isEmpty {
                         signalsSection
                     }
@@ -80,6 +81,29 @@ struct TodayView: View {
         .padding()
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    // 「今天每個 Rotation 到底做了什麼？」總覽（v4）
+    private var todayActionsSection: some View {
+        let rotations = snapshot.allRotations
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("🔄 今日 Rotation 操作")
+                .font(.headline)
+
+            if rotations.isEmpty {
+                Text("尚無 active 輪動組合")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                ForEach(rotations, id: \.name) { rot in
+                    RotationActionSummaryCard(rotation: rot)
+                }
+            }
+        }
     }
 
     private var signalsSection: some View {
