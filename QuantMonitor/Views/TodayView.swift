@@ -13,9 +13,13 @@ struct TodayView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    freshnessBanner
                     headerCard
                     if let review = snapshot.portfolioReview {
                         PerformanceCard(review: review)
+                    }
+                    if let alpha = snapshot.alphaChart, !alpha.series.isEmpty {
+                        alphaChartCard(alpha)
                     }
                     todayActionsSection
                     if !snapshot.signals.isEmpty {
@@ -34,6 +38,9 @@ struct TodayView: View {
             }
             .navigationTitle("今日")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    historyMenu
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("重新載入", systemImage: "arrow.clockwise") { loader.reload() }
@@ -51,6 +58,75 @@ struct TodayView: View {
     }
 
     // ─────────────────────────────────────────────────────────────
+
+    // 歷史日期選單（讀 iCloud 內既有的 <YYYY-MM-DD>.json）
+    @State private var historyDates: [String] = []
+
+    private var historyMenu: some View {
+        Menu {
+            Button("最新", systemImage: "arrow.up.circle") { loader.reload() }
+            if historyDates.isEmpty {
+                Text("無歷史檔")
+            } else {
+                ForEach(historyDates, id: \.self) { d in
+                    Button(d) { loader.loadDate("\(d).json") }
+                }
+            }
+        } label: {
+            Image(systemName: "calendar")
+        }
+        .onAppear { historyDates = loader.availableDates() }
+    }
+
+    // 資料新鮮度／歷史檢視橫幅
+    @ViewBuilder private var freshnessBanner: some View {
+        if loader.isHistorical {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                Text("檢視歷史：\(snapshot.date)")
+                    .font(.subheadline).bold()
+                Spacer()
+                Button("回到最新") { loader.reload() }
+                    .font(.caption).bold()
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+            .padding(10)
+            .foregroundStyle(.blue)
+            .background(Color.blue.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        } else if let staleDays = daysStale, staleDays >= 1 {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.badge.exclamationmark")
+                Text("資料為 \(staleDays) 天前（\(snapshot.date)）")
+                    .font(.subheadline).bold()
+                Spacer()
+            }
+            .padding(10)
+            .foregroundStyle(staleDays >= 3 ? .red : .orange)
+            .background((staleDays >= 3 ? Color.red : Color.orange).opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    /// snapshot.date 與今天相差的日曆天數；無法解析時為 nil。
+    private var daysStale: Int? {
+        guard let snapDate = ChartDate.parse(snapshot.date) else { return nil }
+        let cal = Calendar(identifier: .gregorian)
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: snapDate), to: cal.startOfDay(for: Date())).day
+        return days.map { max(0, $0) }
+    }
+
+    private func alphaChartCard(_ alpha: AlphaChart) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("📈 超額報酬 vs 0050（近 \(alpha.lookbackDays) 日）")
+                .font(.headline)
+            AlphaChartView(chart: alpha)
+        }
+        .padding()
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -141,7 +217,15 @@ struct TodayView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 ForEach(Array(items)) { item in
-                    DiscoveryItemCard(item: item)
+                    NavigationLink {
+                        StockDetailView(
+                            discovery: item,
+                            sparkline: snapshot.positionTimeseries?.series[item.stockId]?.close ?? []
+                        )
+                    } label: {
+                        DiscoveryItemCard(item: item)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

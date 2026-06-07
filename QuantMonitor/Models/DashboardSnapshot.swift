@@ -18,6 +18,8 @@ struct DashboardSnapshot: Codable, Equatable {
     // v1.1 新增（向下相容；舊版日報無此鍵時為 nil）
     let portfolioReview: PortfolioReview?
     let positionTimeseries: PositionTimeseries?
+    // v3 新增（跨組合 alpha vs 0050 長表時序；舊版無此鍵時為 nil）
+    let alphaChart: AlphaChart?
     let errors: [String]
 
     /// v2 統一存取點：優先用 rotations 陣列，舊 JSON 退回 [rotation]。
@@ -237,6 +239,8 @@ struct RotationHolding: Codable, Equatable, Identifiable {
     let unrealizedPnl: Double?
     let unrealizedPct: Double?
     let entryRank: Int?
+    // v4：進場時凍結的選股 rationale（解碼後內層鍵已被 convertFromSnakeCase 轉 camelCase）
+    let entryBreakdown: [String: AnyCodable]?
 
     var id: String { stockId }
 
@@ -347,6 +351,23 @@ struct EquityPoint: Codable, Equatable, Identifiable {
     let date: String
     let capital: Double
     var id: String { date }
+}
+
+// MARK: - Alpha Chart (v3 跨組合 alpha vs 0050 長表)
+
+struct AlphaChart: Codable, Equatable {
+    let lookbackDays: Int
+    let series: [AlphaPoint]
+}
+
+struct AlphaPoint: Codable, Equatable, Identifiable {
+    let date: String
+    let name: String                       // rotation 組合名
+    let alphaCumPct: Double?               // 累積超額（portfolio - 0050）
+    let benchmarkCumReturnPct: Double?     // 0050 累積
+    let portfolioCumReturnPct: Double?     // 組合累積
+    let totalCapital: Double?
+    var id: String { "\(name)-\(date)" }
 }
 
 // MARK: - Position Timeseries (v1.1)

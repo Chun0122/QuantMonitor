@@ -12,9 +12,11 @@ final class DashboardLoader: ObservableObject {
     }
 
     @Published var state: LoadState = .idle
+    /// 是否正在檢視歷史（非 latest.json）某日快照。
+    @Published var isHistorical: Bool = false
 
     private let bookmarkKey = "QuantDashboardFolderBookmark"
-    private let dashboardFileName = "latest.json"
+    private let latestFileName = "latest.json"
 
     // ─────────────────────────────────────────────────────────────
     // 公開 API
@@ -49,15 +51,41 @@ final class DashboardLoader: ObservableObject {
     }
 
     func reload() {
+        isHistorical = false
         state = .loading
-        Task { await loadFromBookmark() }
+        Task { await loadFile(named: latestFileName) }
+    }
+
+    /// 載入指定日期的歷史快照（fileName 形如 "2026-06-06.json"）。
+    func loadDate(_ fileName: String) {
+        isHistorical = (fileName != latestFileName)
+        state = .loading
+        Task { await loadFile(named: fileName) }
+    }
+
+    /// 列出資料夾內可用的歷史日期（新→舊，去 ".json"）。
+    func availableDates() -> [String] {
+        guard let bookmark = UserDefaults.standard.data(forKey: bookmarkKey) else { return [] }
+        var stale = false
+        guard let folderURL = try? URL(
+            resolvingBookmarkData: bookmark, options: [], relativeTo: nil, bookmarkDataIsStale: &stale
+        ) else { return [] }
+        guard folderURL.startAccessingSecurityScopedResource() else { return [] }
+        defer { folderURL.stopAccessingSecurityScopedResource() }
+
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: folderURL.path)) ?? []
+        let pattern = #"^\d{4}-\d{2}-\d{2}\.json$"#
+        return contents
+            .filter { $0.range(of: pattern, options: .regularExpression) != nil }
+            .map { String($0.dropLast(5)) }  // 去 ".json"
+            .sorted(by: >)
     }
 
     // ─────────────────────────────────────────────────────────────
     // 內部
     // ─────────────────────────────────────────────────────────────
 
-    private func loadFromBookmark() async {
+    private func loadFile(named fileName: String) async {
         guard let bookmark = UserDefaults.standard.data(forKey: bookmarkKey) else {
             state = .error("尚未選擇 Dashboard 資料夾")
             return
@@ -83,14 +111,14 @@ final class DashboardLoader: ObservableObject {
         }
         defer { folderURL.stopAccessingSecurityScopedResource() }
 
-        let fileURL = folderURL.appendingPathComponent(dashboardFileName)
+        let fileURL = folderURL.appendingPathComponent(fileName)
 
         // 預檢：檔案存在性 + 列出資料夾內容（協助診斷）
         let fm = FileManager.default
         if !fm.fileExists(atPath: fileURL.path) {
             let contents = (try? fm.contentsOfDirectory(atPath: folderURL.path)) ?? []
             let listing = contents.isEmpty ? "（空資料夾）" : contents.joined(separator: ", ")
-            state = .error("找不到 latest.json\n資料夾：\(folderURL.lastPathComponent)\n內含：\(listing)\n→ 確認 Mac 端有跑 export-dashboard")
+            state = .error("找不到 \(fileName)\n資料夾：\(folderURL.lastPathComponent)\n內含：\(listing)\n→ 確認 Mac 端有跑 export-dashboard")
             return
         }
 

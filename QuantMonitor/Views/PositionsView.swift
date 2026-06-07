@@ -46,11 +46,20 @@ struct PositionsView: View {
 
                     Section {
                         ForEach(rotation.holdings) { holding in
-                            RotationHoldingRow(
-                                holding: holding,
-                                sparkline: sparklineValues(for: holding.stockId),
-                                isNewToday: holding.entryDate == snapshot.date
-                            )
+                            NavigationLink {
+                                StockDetailView(
+                                    holding: holding,
+                                    rotationName: rotation.name,
+                                    action: rotation.actions.first { $0.stockId == holding.stockId },
+                                    sparkline: sparklineValues(for: holding.stockId)
+                                )
+                            } label: {
+                                RotationHoldingRow(
+                                    holding: holding,
+                                    sparkline: sparklineValues(for: holding.stockId),
+                                    isNewToday: holding.entryDate == snapshot.date
+                                )
+                            }
                         }
                     } header: {
                         HStack {

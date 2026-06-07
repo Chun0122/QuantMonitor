@@ -379,6 +379,13 @@ struct PerformanceCard: View {
                 ratioCell(label: "最大回撤", value: review.maxDrawdownPct.map { -$0 }, format: "%.1f%%", colorize: false, mutedNegative: true)
                 ratioCell(label: "勝率", value: review.winRatePct, format: "%.0f%%", colorize: false)
             }
+
+            // 權益曲線
+            if let curve = review.equityCurve, curve.count >= 2 {
+                Divider()
+                Text("權益曲線").font(.caption).foregroundStyle(.secondary)
+                EquityCurveChart(points: curve)
+            }
         }
         .padding()
         .background(.thinMaterial)
