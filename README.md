@@ -1,6 +1,16 @@
 # QuantMonitor
 
-iOS 量化監控 App — 讀取 [taiwan-quant-project](../taiwan-quant-project) 產出的 `daily_dashboard.json`，提供今日狀態 / 持倉 / 事件流三個 Tab。
+iOS 量化監控 App — 讀取 [taiwan-quant-project](../taiwan-quant-project) `export-dashboard` 產出的 dashboard JSON（iCloud `QuantDashboard/latest.json`，schema v4），提供今日狀態 / 持倉 / 事件流三個 Tab。
+
+## 功能
+
+- **今日**：市場 regime、績效摘要 + 權益曲線、Alpha vs 0050 多線圖、今日各 Rotation 操作（買/賣/換股/續持）、五模式 Top5、AI 摘要；資料過期時顯示新鮮度橫幅。
+- **持倉**：各輪動組合持倉、今日操作、監控清單；持倉「今日新進」標記。
+- **事件**：策略調整事件流（可加本地 verdict/註記）。
+- **個股詳細頁**：點持倉/推薦進入，顯示價格目標、今日操作、走勢、選股評分（持倉用凍結的 `entry_breakdown`「為什麼選這檔」）。
+- **歷史回看**：左上日曆切換 iCloud 內任一 `<YYYY-MM-DD>.json`，逐日檢視當天快照與操作。
+
+> 資料流與欄位 schema 見 taiwan-quant-project `docs/dashboard_schema.md`。
 
 ## 系統需求
 
